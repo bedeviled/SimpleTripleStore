@@ -148,12 +148,14 @@ class SimpleTripleStore {
          }
        }
     } catch {
-      case e: Exception => return List(List())
+      case e: Exception => {e.printStackTrace()
+        return List(List())}
     }
   }
 
   def query(clauses: List[List[String]]): List[HashMap[String, String]] = {
     var bindings = new ListBuffer[HashMap[String, String]]()
+    //Query building
         for (clause <- clauses) {
           val bpos = new HashMap[String,  Int]()
           val qc = new ListBuffer[Option[String]]()
@@ -165,15 +167,19 @@ class SimpleTripleStore {
               qc.append(Some(x))
             }
           }
+          //query passing... this could pass back an empty list of lists....so surround with try/catch
           val rows = triples(qc(0), qc(1), qc(2))
           if (bindings.size == 0) {
             // This is the first pass, everything matches
-            for (row <- rows) {
-              val binding = new HashMap[String, String]()
-              for ((vr, pos) <- bpos) {
-                binding += vr -> row(pos)
-              }
-              bindings.append(binding)
+            try{
+              for (row <- rows) {
+                val binding = new HashMap[String, String]()
+                for ((vr, pos) <- bpos) {
+                  binding += vr -> row(pos)
+                }
+                bindings.append(binding)
+              } } catch {
+              case e: Exception => return bindings.toList //no need to go further
             }
           } else {
             // In subsequent passes, eliminate bindings that don't work

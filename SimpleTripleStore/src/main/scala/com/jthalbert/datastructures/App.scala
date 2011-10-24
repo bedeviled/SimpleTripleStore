@@ -38,7 +38,7 @@ object App {
     println("-------------------------")
     println("query test")
     println("-------------------------")
-    println(ts.query(List(List("?movie","starring","Harrison Ford"))))
+    println(ts.query(List(List("?movie","starring",harrisonFordID.get))))
   }
 
 }
