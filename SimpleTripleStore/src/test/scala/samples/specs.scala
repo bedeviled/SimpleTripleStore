@@ -2,7 +2,6 @@ package samples
 
 import org.junit.runner.RunWith
 import org.specs._
-import org.specs.matcher._
 import org.specs.runner.{ JUnitSuiteRunner, JUnit }
 //import org.scalacheck.Gen
 
