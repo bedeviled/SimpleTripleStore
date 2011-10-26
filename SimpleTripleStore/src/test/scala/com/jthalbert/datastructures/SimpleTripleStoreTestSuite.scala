@@ -58,6 +58,9 @@ class SimpleTripleStoreTestSuite extends Assertions {
     for (triplesList <- ts2.triples(None,None,None)){
       mergeStore.add(triplesList(0), triplesList(1), triplesList(2))
     }
+    mergeStore.triples(None, Some("name"), None).foreach(println)
+    mergeStore.query(List(List("?movie","name","?name"), List("blade_runner","name","?name"))).foreach(println)
+
     if (mergeStore.triples(None,None,None).size != 5 ) assert(false)
   }
 

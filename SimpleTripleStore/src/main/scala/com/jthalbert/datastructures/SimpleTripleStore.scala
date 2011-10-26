@@ -187,7 +187,7 @@ class SimpleTripleStore {
             for (binding <- bindings) {
               for (row <- rows) {
                 var validMatch = true
-                val tempBinding = binding //Does this make a copy?
+                val tempBinding = binding.clone() //Does this make a copy?
                 for ((vr, pos) <- bpos) {
                   if (tempBinding.contains(vr)) {
                     if (tempBinding(vr) != row(pos)) {
@@ -206,6 +206,10 @@ class SimpleTripleStore {
     return bindings.toList
   }
 
+  //apply inference, that is grab bindings, transform, put more triples in
+  def applyInference(rule: InferenceRule): Unit= {
+
+  }
   //Convenience method to grab a single value quickly
   def value(sub: Option[String] = None,
             pred: Option[String] = None,
@@ -222,13 +226,20 @@ class SimpleTripleStore {
     var pred = ""
     var obj = ""
     var row: Array[String] = Array()
-    for (line <- Source.fromFile(filename).getLines()) {
+    Source.fromFile(filename).getLines().foreach{line =>
       row = line.split(",")
       sub = row(0)
       pred = row(1)
       obj = row(2)
       add(sub,pred,obj)
     }
+    /*for (line <- Source.fromFile(filename).getLines()) {
+      row = line.split(",")
+      sub = row(0)
+      pred = row(1)
+      obj = row(2)
+      add(sub,pred,obj)
+    } */
   }
 
   def save(filename: String): Unit = {

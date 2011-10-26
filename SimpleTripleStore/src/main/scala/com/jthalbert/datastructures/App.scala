@@ -38,7 +38,25 @@ object App {
     println("-------------------------")
     println("query test")
     println("-------------------------")
-    println(ts.query(List(List("?movie","starring",harrisonFordID.get))))
+    //ts.query(List(List("?movie","name","?name"),List("?movie","starring",harrisonFordID.get))).foreach(println)
+
+    val bg = new SimpleTripleStore()
+    bg.load("/Users/jthalbert/Documents/code/SimpleTripleStore/src/main/scala/com/jthalbert/data/business_triples.csv")
+    bg.query(List(
+      List("?cont","contributor","?company"),
+      List("?cont","recipient","Orrin Hatch"),
+      List("?cont","amount","?dollars"))).foreach(println)
+    val cg = new SimpleTripleStore()
+    cg.load("/Users/jthalbert/Documents/code/SimpleTripleStore/src/main/scala/com/jthalbert/data/celeb_triples.csv")
+    println("-------------------------")
+
+    cg.query(List(List("?rel1","with","?person"),
+      List("?rel1", "with", "Britney Spears"),
+      List("?rel1", "end", "?year1"),
+      List("?rel2", "with", "?person"),
+      List("?rel2", "start", "?year1"))).foreach(println)
+    println("-------------------------")
+
   }
 
 }
