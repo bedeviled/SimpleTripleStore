@@ -208,7 +208,14 @@ class SimpleTripleStore {
 
   //apply inference, that is grab bindings, transform, put more triples in
   def applyInference(rule: InferenceRule): Unit= {
+    val queries = rule.getQueries()
+    val bindings = new ListBuffer[List[HashMap[String, String]]]()
+    for (q <- queries) {
+       bindings.append(query(q))
+    }
+    for (b <- bindings.toList) {
 
+    }
   }
   //Convenience method to grab a single value quickly
   def value(sub: Option[String] = None,
