@@ -1,8 +1,8 @@
 package com.jthalbert.datastructures
 
-import collection.mutable.HashMap
 import java.net.{URLEncoder, URL}
 import io.Source
+import collection.mutable.{ListBuffer, HashMap}
 
 /**
  * Created by IntelliJ IDEA.
@@ -12,19 +12,14 @@ import io.Source
  * To change this template use File | Settings | File Templates.
  */
 
-trait TripleMaker {
-  def tripleMaker(binding: Map[String,String]*): List[List[String]]
-}
-
-trait InferenceRule extends TripleMaker {
+trait InferenceRule {
   def getQueries(): List[List[List[String]]] = {
     return List(List(List()))
   }
-  def makeTriples(binding: List[Map[String,String]]): List[List[String]] = {
+  def makeTriples(binding: List[Map[String,String]]): List[List[String]]
     //need a way to pull out a hashmap and grab values to pass in.
     //unfortunately repeated by-name parameters aren't supported.
-      return tripleMaker(binding:_*)
-  }
+
  }
 
 
@@ -38,9 +33,10 @@ class WestCoastRule extends InferenceRule {
     List(sfoQuery,seaQuery,laxQuery,porQuery)
   }
 
-  def tripleMaker(binding: String*): List[List[String]] = {
-    val company = binding(0)
-    List(List(company, "on_coast", "west_coast"))
+  def makeTriples(binding: List[Map[String, String]]): List[List[String]] = {
+    //this will work if ?company in binding... if not it will return an empty list
+    for (b <- binding if b.contains("?company")) yield List(b("?company"),"on_coast","west_coast")
+    //TODO: so check for it.
   }
 }
 
@@ -53,12 +49,8 @@ class EnemyRule extends InferenceRule {
     List(partnerEnemy)
   }
 
-  def tripleMaker(binding: String*): List[List[String]] = {
-    val person = binding(0)
-    val enemy = binding(1)
-    val rel = binding(2)
-    val partner = binding(3)
-    List(List(partner, "enemy", enemy))
+  def makeTriples(binding: List[Map[String, String]]): List[List[String]] = {
+    for (b <- binding if b.contains("?enemy") & b.contains("?partner")) yield List(b("?partner"), "enemy", b("?enemy"))
   }
 }
 
@@ -66,6 +58,28 @@ class GeocodeRule extends InferenceRule {
   override def getQueries(): List[List[List[String]]] = {
     val addressQuery = List(List("?place","address","?address"))
     List(addressQuery)
+  }
+
+
+  def makeTriples(binding: List[Map[String, String]]): List[List[String]] = {
+    //for comprehension doesn't work (or I can't figure it out) for this one
+    // since I need to emit two things per binding element
+    val outList = new ListBuffer[List[String]]()
+    for (b <- binding) {
+      if (b.contains("?place") & b.contains("?address")) {
+        val place = b("?place")
+        val address = b("?address")
+        val url = new URL("http://rpc.geocoder.us/service/csv?address=%s" format URLEncoder.encode(address,"UTF-8"))
+        val data = Source.fromInputStream(url.openStream()).getLines().mkString
+        Thread.sleep(1500)  //a courtesy to the geocoder folks
+        val parts = data.split(",")
+        if (parts.size>=5) {
+          outList.append(List(place,"longitude",parts(0)))
+          outList.append(List(place, "latitude",parts(1)))
+        }
+      }
+    }
+    return outList.toList
   }
 
   def tripleMaker(binding: String*): List[List[String]] = {
@@ -99,6 +113,17 @@ class CloseToRule(place: String,  graph: SimpleTripleStore) extends InferenceRul
     List(geoq)
   }
 
+  def makeTriples(binding: List[Map[String, String]]): List[List[String]] = {
+    for (b <- binding if b.contains("?place") & b.contains("?lat") & b.contains("?long")) yield {
+      val distance = Math.pow(Math.pow(69.1*(lat-b("?lat").toFloat),2) + Math.pow (53*(long - b("?long").toFloat),2),0.5)
+      if (distance < 1) {
+        List(b("?place"),"close_to",b("place"))
+      } else {
+        List(b("?place"),"far_from",b("place"))
+      }
+    }
+  }
+
   def tripleMaker(binding: String*): List[List[String]] = {
     //Formula for approximate distance (if you want to do large distances you need the great circle distance
     val myplace = binding(0)
@@ -122,6 +147,10 @@ class TouristyRule extends InferenceRule {
       List("?restaurant","is_a","restaurant"),
       List("?restaurant","cost","cheap"))
     List(tr)
+  }
+
+  def makeTriples(binding: List[Map[String, String]]): List[List[String]] = {
+    for (b <-  binding if b.contains("?restaurant")) yield List(b("?restaurant"),"is_a","touristy restaurant")
   }
 
   def tripleMaker(binding: String*): List[List[String]] = {
