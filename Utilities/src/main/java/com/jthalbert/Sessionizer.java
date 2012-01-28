@@ -1,17 +1,18 @@
 package com.jthalbert;
 
 import org.krakenapps.pcap.PcapInputStream;
-import org.krakenapps.pcap.decoder.ethernet.*;
+import org.krakenapps.pcap.decoder.ethernet.EthernetDecoder;
+import org.krakenapps.pcap.decoder.ethernet.EthernetType;
 import org.krakenapps.pcap.decoder.ip.InternetProtocol;
 import org.krakenapps.pcap.decoder.ip.IpDecoder;
 import org.krakenapps.pcap.decoder.ip.IpPacket;
 import org.krakenapps.pcap.decoder.ip.IpProcessor;
-import org.krakenapps.pcap.decoder.tcp.TcpDecoder;
-import org.krakenapps.pcap.decoder.tcp.TcpPortProtocolMapper;
+import org.krakenapps.pcap.decoder.tcp.*;
 import org.krakenapps.pcap.decoder.udp.UdpDecoder;
 import org.krakenapps.pcap.decoder.udp.UdpPortProtocolMapper;
 import org.krakenapps.pcap.file.PcapFileInputStream;
 import org.krakenapps.pcap.packet.PcapPacket;
+import org.krakenapps.pcap.util.Buffer;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,13 +31,17 @@ public class Sessionizer {
 
         EthernetDecoder ethernetDecoder = new EthernetDecoder();
         IpDecoder ip = new IpDecoder();
-        //TcpDecoder tcp = new TcpDecoder(new TcpPortProtocolMapper());
-        //UdpDecoder udp = new UdpDecoder(new UdpPortProtocolMapper());
+        TcpDecoder tcp = new TcpDecoder(new TcpPortProtocolMapper());
+        tcp.registerSegmentCallback(new myTcpSegmentCallbak());
+        UdpDecoder udp = new UdpDecoder(new UdpPortProtocolMapper());
 
         ethernetDecoder.register(EthernetType.IPV4,ip);
-        //ethernetDecoder.register(EthernetType.IPV4, new MyIpProcessor());
         ip.register(InternetProtocol.TCP,new MyTCPProcessor());
-        //ip.register(InternetProtocol.UDP,udp);
+        ip.register(InternetProtocol.UDP,new MyUDPProcessor());
+        //ip.register(InternetProtocol.TCP,tcp);
+        //ethernetDecoder.register(EthernetType.IPV4, new MyIpProcessor());
+        //ip.register(InternetProtocol.TCP,new MyTCPProcessor());
+
 
         PcapInputStream inputStream = new PcapFileInputStream(f);
         while (true) {
@@ -48,19 +53,51 @@ public class Sessionizer {
 
     }
 
-    private static class MyIpProcessor implements EthernetProcessor {
-        public void process(EthernetFrame frame) {
-            MacAddress sourceMac = frame.getSource();
-            MacAddress destMac = frame.getDestination();
-            System.out.println(sourceMac.toString());
+    private static class MyIpProcessor implements IpProcessor {
+
+        public void process(IpPacket packet) {
+            InetAddress sourceIP = packet.getSourceAddress();
+            InetAddress destIP = packet.getDestinationAddress();
+            Buffer data = packet.getData();
+            int protocol = packet.getProtocol();
+
         }
     }
 
     private static class MyTCPProcessor implements IpProcessor {
         public void process(IpPacket packet) {
-            InetAddress source = packet.getSourceAddress();
-            InetAddress dest = packet.getDestinationAddress();
-            System.out.println(source.toString()+"->"+dest.toString());
+            InetAddress sourceIP = packet.getSourceAddress();
+            InetAddress destIP = packet.getDestinationAddress();
+            Buffer data = packet.getData();
+            int sourcePort = (int) data.getShort() & 0xffff;
+            int destPort = (int) data.getShort() & 0xffff;
+            System.out.println(sourceIP.getHostAddress()+":"+sourcePort+"->"+destIP.getHostAddress()+":"+destPort);
+        }
+    }
+
+    private static class myTcpSegmentCallbak implements TcpSegmentCallback {
+        public void onReceive(TcpSession session, TcpSegment segment) {
+            try {
+                InetAddress clientIP = session.getKey().getClientIp();
+                InetAddress serverIP = session.getKey().getServerIp();
+                int clientPort = session.getKey().getClientPort();
+                int serverPort = session.getKey().getServerPort();
+                System.out.println(clientIP.getHostAddress()+":"+clientPort);
+            } catch (Exception e) {
+
+            }
+        }
+    }
+
+
+    private static class MyUDPProcessor implements IpProcessor {
+        public void process(IpPacket packet) {
+            InetAddress sourceIP = packet.getSourceAddress();
+            InetAddress destIP = packet.getDestinationAddress();
+            Buffer data = packet.getData();
+            int sourcePort = (int) data.getShort() & 0xffff;
+            int destPort = (int) data.getShort() & 0xffff;
+            System.out.println(sourceIP.getHostAddress()+":"+sourcePort+"->"+destIP.getHostAddress()+":"+destPort);
         }
     }
 }
