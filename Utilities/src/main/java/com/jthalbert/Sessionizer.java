@@ -2,6 +2,8 @@ package com.jthalbert;
 
 import org.krakenapps.pcap.PcapInputStream;
 import org.krakenapps.pcap.decoder.ethernet.EthernetDecoder;
+import org.krakenapps.pcap.decoder.ethernet.EthernetFrame;
+import org.krakenapps.pcap.decoder.ethernet.EthernetProcessor;
 import org.krakenapps.pcap.decoder.ethernet.EthernetType;
 import org.krakenapps.pcap.decoder.ip.InternetProtocol;
 import org.krakenapps.pcap.decoder.ip.IpDecoder;
@@ -27,7 +29,7 @@ import java.net.InetAddress;
  */
 public class Sessionizer {
     public static void main(String[] args) throws IOException {
-        File f = new File("/Users/jthalbert/Documents/code/data/outside.tcpdump");
+        File f = new File("/Users/jthalbert/Documents/code/Utilities/src/main/resources/test.pcap");
 
         EthernetDecoder ethernetDecoder = new EthernetDecoder();
         IpDecoder ip = new IpDecoder();
@@ -37,7 +39,7 @@ public class Sessionizer {
 
         ethernetDecoder.register(EthernetType.IPV4,ip);
         ip.register(InternetProtocol.TCP,new MyTCPProcessor());
-        ip.register(InternetProtocol.UDP,new MyUDPProcessor());
+        //ip.register(InternetProtocol.UDP,new MyUDPProcessor());
         //ip.register(InternetProtocol.TCP,tcp);
         //ethernetDecoder.register(EthernetType.IPV4, new MyIpProcessor());
         //ip.register(InternetProtocol.TCP,new MyTCPProcessor());
@@ -53,13 +55,9 @@ public class Sessionizer {
 
     }
 
-    private static class MyIpProcessor implements IpProcessor {
+    private static class MyEthernetProcessor implements EthernetProcessor {
 
-        public void process(IpPacket packet) {
-            InetAddress sourceIP = packet.getSourceAddress();
-            InetAddress destIP = packet.getDestinationAddress();
-            Buffer data = packet.getData();
-            int protocol = packet.getProtocol();
+        public void process(EthernetFrame frame) {
 
         }
     }
@@ -68,10 +66,18 @@ public class Sessionizer {
         public void process(IpPacket packet) {
             InetAddress sourceIP = packet.getSourceAddress();
             InetAddress destIP = packet.getDestinationAddress();
+
             Buffer data = packet.getData();
-            int sourcePort = (int) data.getShort() & 0xffff;
-            int destPort = (int) data.getShort() & 0xffff;
-            System.out.println(sourceIP.getHostAddress()+":"+sourcePort+"->"+destIP.getHostAddress()+":"+destPort);
+            int tcpLength = packet.getTotalLength() - packet.getIhl();
+            TcpPacket tcpPacket = TcpPacket.parse(sourceIP,destIP,tcpLength,data);
+            int sourcePort = tcpPacket.getSourcePort();
+            int destPort = tcpPacket.getDestinationPort();
+            Buffer tcpdata = tcpPacket.getData();
+            if (tcpdata != null ){
+                System.out.println(tcpdata.getString(tcpdata.readableBytes()));
+            }
+            //System.out.println(sourceIP.getHostAddress()+":"+sourcePort+"->"+destIP.getHostAddress()+":"+destPort);
+            //System.out.println(tcpPacket.toString());
         }
     }
 
